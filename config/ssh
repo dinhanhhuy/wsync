@@ -1,0 +1,4 @@
+AUTO_UPDATE=true
+IGNORE_CACHE_TIME=true
+GIT_FOLDER="\/root/.ssh"
+CUSTOM_EVAL="pwd && ls -a"
