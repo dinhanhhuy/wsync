@@ -1,9 +1,14 @@
 set -e
 
 # Setting
-HOUR_BEFORE_CHECK=0
+HOUR_BEFORE_CHECK=3
 WSYNC_CONFIG_FILE=~/.wsync.config
-
+IGNORE_CACHE_TIME=true
+AUTO_UPDATE=true
+USER_PATH="/root"
+BASE_CONFIG_PATH="$USER_PATH/.zshrc"
+SHARE_CONFIG_PATH=""
+GIT_FOLDER="$USER_PATH/.ssh"
 
 if [ ! -f $WSYNC_CONFIG_FILE ]; then
   echo "[INFO]: Create config file"
@@ -11,16 +16,31 @@ if [ ! -f $WSYNC_CONFIG_FILE ]; then
 fi
 
 ask() {
-  read -p "$1" confirm && [[ $confirm == [yY] || $confirm == [yY][eE][sS] ]]
+  read -p "$1" ASK_CONFIRM && [[ $ASK_CONFIRM == [yY] || $ASK_CONFIRM == [yY][eE][sS] ]]
+}
+
+update() {
+  if [ ! $AUTO_UPDATE ]; then
+     ask "Do you want to update [y/n]? "
+  fi
+
+  if [ $AUTO_UPDATE ] || [ $ASK_CONFIRM ];  then
+    git pull
+    date +%s > $WSYNC_CONFIG_FILE
+    echo "[INFO]: $ source $BASE_CONFIG_PATH"
+    source $BASE_CONFIG_PATH
+  fi
 }
 
 check_for_update() {
   LAST=$(cat $WSYNC_CONFIG_FILE)
+  LAST=${LAST:-0}
   NOW=$(date +%s)
+  # echo $LAST $NOW
   SECOND=$(($NOW-$LAST))
   HOUR=$((DELTA/3600))
 
-  if [ $HOUR -lt $HOUR_BEFORE_CHECK ]; then
+  if [ ! $IGNORE_CACHE_TIME ] && [ $HOUR -lt $HOUR_BEFORE_CHECK ]; then
     exit 0
   fi
 
@@ -28,19 +48,9 @@ check_for_update() {
   CURRENT_COMMIT=$(git rev-parse HEAD)
   LATEST_COMMIT=$(git rev-parse origin/master)
 
-  if [ "${CURRENT_COMMIT}" != "${LATEST_COMMIT}" ]; then
-    echo "[INFO]: up to date"
-    exit 0
-  else
-    ask "Do you want to update [y/n]? "
-    git pull | cowsay
-    date +%s > $WSYNC_CONFIG_FILE
+  if [ "$CURRENT_COMMIT" = "$LATEST_COMMIT" ]; then
+    update
   fi
 }
-
-
-BASE_CONFIG_PATH="/home/dahuy/.zshrc"
-SHARE_CONFIG_PATH=""
-GIT_FOLDER="/home/dahuy/.ssh"
 
 check_for_update
